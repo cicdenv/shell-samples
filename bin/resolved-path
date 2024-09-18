@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+# Determine the absolute script parent directory
+bin_dir="$(cd "$(dirname "$0")" ; pwd -P)"
+
+# Script short name
+script_file="$(basename "${BASH_SOURCE[0]}")"
+
+# Resolved full script path and args
+printf "%s/%s %s\n" "$bin_dir" "$script_file" "$*"

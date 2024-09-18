@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+# New log file each run
+log="output-$(date "+%Y-%m-%d_%H-%M-%S").log"
+printf >&2 "Log file: %s\n" "$log"
+
+# stdout, stderr to the "raw" (color codes) log file
+exec 3>&1 4>&2
+exec > >(tee "$log") 2>&1
+
+# reset file descriptors, strip color codes
+function post_actions {
+  exec 2>&4 1>&3
+  regex='s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g'
+  sed -i '-raw' -r "$regex" "$log"
+}
+trap 'post_actions' EXIT SIGHUP SIGINT SIGQUIT # 0 1 2 3
+
+ls -l --color="always"
+echo >&2 "stderr -> ..."
+
+printf >&3 "console only stdout\n"
+printf >&4 "console only stderr\n"

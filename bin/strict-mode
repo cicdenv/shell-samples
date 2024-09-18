@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+function error:handler {
+    exit_code="$?"
+    printf >&2 "%s -> error (set -e), line=%s, command=%s\n" \
+      "$0" "$LINENO" "$BASH_COMMAND"
+    exit "$exit_code"
+}
+trap error:handler ERR
+
+yes | false

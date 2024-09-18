@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+# Simulated items to process
+count="25"
+
+# Simulate progress
+for completed in $(seq "$count"); do
+  percentage="$(
+    bc <<< "scale=2; ${completed} / ${count} * 100"
+  )"
+  bar="$(printf '%.s#' $(seq "$completed"))"
+  printf >&2 "Completed 1 item, progress: (%2d/%2d) [%-${count}s] %3.0f%% ...\n" \
+    "$completed" "$count" "$bar" "$percentage"
+done

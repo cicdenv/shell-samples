@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+# task+state file format:
+# - [x] gcc -o program program.c
+# - [!] python -c "assert False"
+# - [-] python ../script.py arg=1 [<pid>]
+# - [ ] python ../script.py arg=2
+TASKS_FILE="$(mktemp -t 'tasks')"
+cat <<EOF > "$TASKS_FILE"
+- [x] echo ...
+- [!] /usr/bin/false
+- [ ] sleep 1
+- [ ] echo ...
+- [ ] false
+- [ ] host www.google.com
+EOF
+
+# Cleanup temp files on exit.
+function cleanup {
+  printf >&2 "\nCleaning up state file ...\n\n"
+
+  rm "$TASKS_FILE"
+}
+trap cleanup 0
+
+while true; do
+    # Check if there are any un-executed tasks left
+    if ! grep -n -m 1 "^- \[ \]" "$TASKS_FILE" >/dev/null; then
+      break
+    fi
+
+    # Find the line number of the first un-executed task
+    line_num=$(grep -n -m 1 "^- \[ \]" "$TASKS_FILE" | cut -d: -f1)
+
+    # Extract the command and append this runner's PID
+    task_entry=$(sed -n "${line_num}p" "$TASKS_FILE")
+    task_command="${task_entry//- \[ \] /}"
+    task_update="- [-] ${task_command} [$$]"
+
+    # Replace the line with the executing status
+    sed -i 'bak' "${line_num}s#.*#$task_update#" "$TASKS_FILE"
+
+    # Execute the command
+    printf >&2 "=> %s\n" "$task_command"
+    set +e
+    eval "$task_command"
+    task_code="$?"
+    set -e
+
+    # Update the task status based on execution result
+    if [[ "$task_code" -eq "0" ]]; then
+        # Update the task status to completed
+        sed -i 'bak' "/$$/s#.*#- [x] $task_command#" "$TASKS_FILE"
+    else
+        # Update the task status to failed
+        sed -i 'bak' "/$$/s#.*#- [!] $task_command#" "$TASKS_FILE"
+    fi
+    cat "$TASKS_FILE"
+done
+
+printf >&2 "All tasks were attempted/completed.\n"

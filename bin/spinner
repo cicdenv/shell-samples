@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+(sleep 5.5) &
+task_pid="$!"  # Process ID to wait on
+
+# Spinner as a array of ASCII chars, 
+read -r -a spinner <<< "| / - \\"
+spinner_chars="${#spinner[@]}"
+
+i=0; while kill -0 -- "$task_pid" 2>/dev/null; do
+  index=$(((i++) % spinner_chars))
+  printf >&2 "\r%1d(s) [%s] ..." "$((i / 10))" "${spinner[$index]}"
+  sleep .1
+done
+printf >&2 "\nCompleted in %d(s)\n" "$((i / 10))"

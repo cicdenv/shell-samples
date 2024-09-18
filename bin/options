@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+function usage {
+  cat >&2 <<EOF
+
+Usage:
+
+  ${0} -c|--cluster=<cluster> [-d|--dry-run] [-h|--help] <account:region>+
+
+EOF
+}
+
+# At least one flag is required
+if [[ "$#" -eq "0" ]]; then
+  printf >&2 "Missing required arguments.\n" 
+  usage
+  exit 1
+fi
+
+#
+# Supports short+long[=] options
+#
+positional_args=()
+cluster=""
+dry_run="false"
+while [[ "$#" -gt "0" ]]; do
+  case "$1" in
+    -c=*|--cluster=*) cluster="${1#*=}"; shift 1;;
+    -c|--cluster)
+      if [[ "$#" -gt 1 && "$2" != -* ]]; then
+        cluster="$2"
+        shift 2
+      else
+        printf >&2 "%s requires an argument\n" "$1"
+        usage;
+        exit 1
+      fi
+      ;;
+    -d|--dry-run)
+      dry_run="true"
+      shift 1
+      ;;
+    -h|--help) usage; exit 1;;
+    -*) printf >&2 "unknown option: %s\n" "$1"; usage; exit 1;;
+    *) positional_args+=("$1"); shift 1;;
+  esac
+done
+
+cat >&2 <<EOF
+${0}
+
+  cluster -> ${cluster}
+  args    -> ${positional_args[@]+"${positional_args[@]}"}
+  dry-run -> ${dry_run}
+
+EOF
+
+# Cluster must have a non-empty value
+if [[ -z "$cluster" ]]; then
+  printf >&2 "Missing required argument: cluster.\n" 
+  usage
+  exit 1
+fi
+
+# Must have at least 1 target (account:region)
+if [[ "${#positional_args[@]}" -eq "0" ]]; then
+  printf >&2 "Missing required target(s): <account:region>+.\n" 
+  usage
+  exit 1
+fi
